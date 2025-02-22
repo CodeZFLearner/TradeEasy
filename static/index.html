@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://code.jquery.com/jquery-3.0.0.min.js"></script>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div>
+    <div id="main">
+      <div id="hotnew" >
+        <h3>
+          热点新闻
+        </h3>
+        <div class="hot-new"></div>
+      </div>
+      <div id ="new24"></div>
+      <div id ="rank">
+        <h>榜单</h>
+        <div id = "rank-c"></div>
+      </div>
+    </div>
+
+  </div>
+</body>
+<script>
+   document.addEventListener('mouseenter', (event) => {
+   
+    if(event.target.closest){
+      const closestUl = event.target.closest('ul'); // 找到最近的 ul
+      if (closestUl) {
+        closestUl.classList.add('hover-background'); // 添加背景颜色
+      }
+    }
+      
+    }, true); // 使用捕获阶段确保事件从外层向内传播
+
+    // 监听 mouseleave 事件
+    document.addEventListener('mouseleave', (event) => {
+      if(event.target.closest){
+        const closestUl = event.target.closest('ul'); // 找到最近的 ul
+        if (closestUl) {
+          closestUl.classList.remove('hover-background'); // 移除背景颜色
+        }
+      }
+      
+    }, true); // 使用捕获阶段确保事件从外层向内传播
+  const amounts = [0,50,100,200,500,1000,2000,5000,10000,100000000];
+  const percents = [-100,-20,-11,-8,-6,-4,-2,2,4,6,8,11,20,10000];
+  const yi = 10000*10000;
+  // key = 市值区间索引*20 + 涨幅区间索引
+  const amountMap = new Map();
+  const percentMap = new Array(percents.length - 1).fill(0);
+  let main = $("#main")
+  let new24 = $("#new24")
+  let rank = $("#rank-c")
+  let easthost = "https://finance.eastmoney.com/"
+  let host = "http://localhost:8080/"
+  let etf_url_pre = 'https://xueqiu.com/S/'
+  let screener = "https://stock.xueqiu.com/v5/stock/screener"
+  let base_url = host + "crawl?category=Category"
+
+
+  // const Category = {}
+  // get(base_url.replace("Category","Event")).then(res=>{
+  //     let shows = res.data.map(event=>{
+  //         return {text:`${event.name}`,right:`${event.showTime.slice(5,10)}`}
+  //     });
+  //     $(main).append(createDiv({"title":"事件","list":shows},'txt'));
+  //     console.log(res)
+  // })
+  // get(base_url.replace("Category","HotNews")).then(res=>{
+  //     let shows = res.data.map(event=>{
+  //         return {text:`${event.artTitle}(${event.mediaName})`}
+  //     });
+  //     $(main).append(createDiv({"title":"新闻","list":shows},'txt'));
+  //     console.log(res)
+  // })
+  /**
+  
+     */
+     get(host+"hotNews.txt").then(res=>{
+    console.log("..." + res)
+    $(".hot-new").html(markdownToHtml(res));
+  })
+  get(host+"fastNews-answer.txt").then(async (res)=>{
+    fastNewJdata = await get(host+"fastNews-title.json")
+   
+    const dre = /\n\s*\n#/
+    const chinese = /[\u4e00-\u9fff]+/
+    const artcode = /\d{18}/
+    let dlist = res.split(dre);
+    let fastlist = []
+    
+    dlist.forEach(one=>{
+      let t1 = ''
+      let t2 = ''
+      let l1 = []
+      let l2 = []
+      one.split(/\n/).forEach(line=>{
+        console.log(line)
+        let matchcode = line.match(artcode)
+        if(matchcode && fastNewJdata[matchcode[0]]){
+          l2.push({
+            text:fastNewJdata[matchcode[0]],
+            href:easthost + `a/${matchcode}.html`
+          })
+        }else{
+          let title = line.match(chinese)
+          if(title){
+            if(t2 && l2.length){
+              l1.push({
+                "title":t2,
+                "list":l2
+              })
+              l2 = []
+            }else if(!t1){
+              t1 = title[0]
+            }
+            t2 = title[0]
+          }else{
+            console.log(line)
+          }
+        }
+      })
+      if(t2 && l2.length){
+        l1.push({
+                "title":t2,
+                "list":l2
+              })
+            }
+      if(t1 && l1.length){
+        fastlist.push({
+                "title":t1,
+                "list":l1
+              })
+      }
+      // fastlist.push(replaceCode(one).trim())
+    })
+    console.log(fastlist)
+    $(new24).append(createX({title:"24快讯",list:fastlist}))
+    
+  
+  })
+   
+  get(base_url.replace("Category","LastestChangeShares")).then(res=>{
+      let decreList = res.decreList.map(item=>{
+          let w = (item.CHANGE_AMOUNT/10000).toFixed(2)
+
+          let lv = ((item.AVERAGE_PRICE - item.f2)*100/item.f2).toFixed(2)
+          return {text:`${item.f14}`,href: etf_url_pre+ShOrSz(item.f12),right:`${w}w(${lv}%)`}
+      });
+      let increList = res.increList.map(item=>{
+          let w = (item.CHANGE_AMOUNT/10000).toFixed(2)
+
+          let lv = ((item.AVERAGE_PRICE - item.f2)*100/item.f2).toFixed(2)
+          return {text:`${item.f14}`,href: etf_url_pre+ShOrSz(item.f12),right:`${w}w(${lv}%)`}
+      });
+      console.log(decreList,increList)
+      let data ={
+        "title":"增减持",
+        "list":[
+          {
+            "title":"减持榜",
+            "list":decreList
+          },
+          {
+            "title":"增持榜",
+            "list":increList
+          }
+        ]
+      }
+      $(rank).append(createDiv(data))
+      // $(main).append(createDiv({"title":"减持榜","list":decreList}));
+      // $(main).append(createDiv({"title":"增持榜","list":increList}));
+      // console.log(res)
+  })
+  /**
+  get(base_url.replace("Category","Popular")).then(res=>{
+      let codes = res.data.map(item=>item.sc);
+      get(base_url.replace("Category","StockDetail") + `&codes=${codes.map(item=>item.slice(2)).join(",")}`)
+          .then(res=>{
+              console.log(res)
+              let stocks = res.data;
+              let shows = [];
+              for(let i=0;i<codes.length;i++){
+                  shows.push({
+                      text:`${stocks[i].f14}`,
+                      href:etf_url_pre + codes[i],
+                      right:`${stocks[i].f3}%`
+                  })
+              }
+
+              $(main).append(createDiv({"title":"Popular","list":shows}));
+          })
+
+  })
+  get(base_url.replace("Category","PopularRc")).then(res=>{
+      let codes = res.data.map(item=>item.sc);
+      get(base_url.replace("Category","StockDetail") + `&codes=${codes.map(item=>item.slice(2)).join(",")}`)
+          .then(res=>{
+              console.log(res)
+              let stocks = res.data;
+              let shows = [];
+              for(let i=0;i<codes.length;i++){
+                  shows.push({
+                      text:`${stocks[i].f14}`,
+                      href:etf_url_pre + codes[i],
+                      right:`${stocks[i].f3}%`
+                  })
+              }
+
+              $(main).append(createDiv({"title":"热榜增速榜","list":shows}));
+          })
+
+  })
+          */
+      Promise.all([get(base_url.replace("Category","lv60")+'&incre=0'),get(base_url.replace("Category","lv60")+'&incre=1')])
+      .then((list)=>{
+        let [r1,r2] = list
+        console.log(r1)
+          let dlist = r1.data.map(item=>{
+              return {text:`${item.f14}(${item.f2})`,href: etf_url_pre+ShOrSz(item.f12),right:`${item.f24}%`}
+          });
+          let ilist = r2.data.map(item=>{
+              return {text:`${item.f14}(${item.f2})`,href: etf_url_pre+ShOrSz(item.f12),right:`${item.f24}%`}
+          });
+          let data ={
+            "title":"60日涨跌幅",
+            "list":[
+              {
+                "title":"涨幅榜",
+                "list":ilist
+              },
+              {
+                "title":"跌幅榜",
+                "list":dlist
+              }
+            ]
+          }
+          console.log(data)
+          $(rank).append(createDiv(data))
+         }).catch(err=>{
+            console.log(err)
+         })
+  /**
+  let huobis =[{'name': '交易货币ETF', 'symbol': 'SH511690'}, {'name': '场内货币ETF', 'symbol': 'SH511700'}, {'name': '财富宝ETF', 'symbol': 'SH511850'}, {'name': '货币ETF建信添益', 'symbol': 'SH511660'}, {'name': '理财金货币ETF', 'symbol': 'SH511810'}, {'name': '华宝添益ETF', 'symbol': 'SH511990'}, {'name': '招商快线ETF', 'symbol': 'SZ159003'}, {'name': '货币ETF', 'symbol': 'SZ159001'}];
+  Promise.all(huobis.map(huobi=>priceDistribution(huobi.symbol))).then(res=>{
+      let result = [];
+      console.log("货币etf:",res)
+      for(let i = 0 ;i< res.length;i++){
+          let pks = res[i];
+
+          let s = pks[0].num + pks[1].num;
+
+          //pks = pks.map(pk=>{return {text:`${pk.p}(${shou(pk.num/100)})`,right:`${pk.lv}`}});
+          //linear-gradient(to right,#1bb009 ${pks[0].num*100/s}, #e74d4d ${pks[1].num*100/s});
+          // linear-gradient(to right, #1bb009 60%, #e74d4d 40%)
+          let line = $("<div class='gradient-line'>").attr("style", `background:linear-gradient(to right,#1bb009 ${(pks[0].num*100/s).toFixed(0)}%, #e74d4d 0%) !important`);
+          let mainDiv = $("<div class ='gradient-container'>")
+              .append($("<div class='text'>").text(pks[0].lv))
+              .append(line)
+              .append($("<div >").text(pks[1].lv));
+          result.push({text:huobis[i].name,href:etf_url_pre + huobis[i].symbol,right:mainDiv,bi:(pks[0].num*100/s).toFixed(0)})
+      }
+      //let a = $("<iframe >").attr({"src":"https://stock.finance.sina.com.cn/fundInfo/view/FundInfo_JJGK.php?symbol=511990","style":"width:100%; height:500px;"}).appendTo("body")
+
+      result.sort((a,b)=>a.bi - b.bi);
+      $(main).append(createDiv({"title":"货币ETF","list":result}));
+
+  })
+
+  let shaMaxPage = 4;//16
+  let szaMaxPage = 4;//28
+  dp(screener + "/quote/list.json?page={%s}&size=100&type=sha&order_by=amount&order=desc",1,shaMaxPage,stat).then(res=>{
+      console.log("[sha amount end]:")
+      return dp(screener + "/quote/list.json?page={%s}&size=100&type=sza&order_by=amount&order=desc",1,szaMaxPage,stat)
+  }).then(res=>{
+      console.log("[sza amount end]:")
+      for(let i=0;i<percentMap.length;i++){
+          console.log(`(${percents[i]},${percents[i+1]}) : ${percentMap[i]}`)
+      }
+      // 成交额
+      let stocks = findStockByCapAndPercent({},{}).sort((stock1,stock2)=>stock2.amount - stock1.amount).slice(0,30);
+      console.log("条件:===========")
+      let quotes  = stocks.map(quote=>{
+          return {text:`${quote.name}(${quote.percent}%)`,href:etf_url_pre + quote.symbol,right:`${quote.amount}亿`}
+      })
+      let result = lowestAmount().map(stock=>{
+          return {text:`${stock.name}(${stock.percent}%)`,href:etf_url_pre + stock.symbol,right:`${(100*stock.amount/(stock.cap*(stock.percent + 0.00001))).toFixed(2)}`}
+      });
+      $(main).append(createDiv({"title":"成交额","list":quotes}));
+      $(main).append(createDiv({"title":"无量下跌","list":result}));
+  }).catch(err=>{
+      console.log("error"+err);
+  })
+
+
+  
+*/
+forward(screener + "/fund/list.json?page=1&size=1080&order=desc&order_by=percent&type=18&parent_type=1").then(res=>{
+      console.log("抓取etf:" + res.data.count)
+      let etfs  = res.data.list
+      etfs.sort((a,b)=>a.premium_rate - b.premium_rate)
+      let zhejias = removeSimilarETFs(etfs.slice(0,40)).map(etf=>{
+          return {text:`${etf.name}(${etf.percent}%)`,href:etf_url_pre + etf.symbol,right:`${etf.premium_rate}%`}
+      }).slice(0,15);
+      let yijias = removeSimilarETFs(etfs.slice(-30)).map(etf=>{
+          return {text:`${etf.name}(${etf.percent}%)`,href:etf_url_pre + etf.symbol,right:`${etf.premium_rate}%`}
+      }).slice(0,15).reverse();
+      console.log(zhejias)
+      $(main).append(createDiv({"title":"折价榜","list":[{"title":"折价","list":zhejias},{"title":"溢价","list":yijias}]}));
+      // $(main).append(createDiv({"title":"溢价榜","list":[]}));
+  })
+  function priceDistribution(symbol){
+      let pankou = `https://stock.xueqiu.com/v5/stock/realtime/pankou.json?symbol=${symbol}`
+      let url = `https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=${symbol}&begin=${Date.now()}&period=60m&type=before&count=-284&indicator=kline`
+      let pks= []
+      return forward(pankou).then(res=>{
+          console.log("盘口:"+symbol,res)
+          pks = [{'p':res.data[`sp1`].toFixed(3),'num':res.data[`sc1`] + res.data[`sc2`]},{'p':res.data[`bp1`].toFixed(3),'num':res.data[`bc1`] + res.data[`bc2`]}]
+          return forward(url)
+      }).then(res=>{
+          let arr = res?.data?.item.map(aTime=>Array.from({ length: ((aTime[3] - aTime[4]) / 0.001 + 1).toFixed(0) }, (_, index) => (aTime[4] + index * 0.001).toFixed(3))).flat() || [];
+          let counts = arr.reduce((counts,em)=>{
+              counts[em] = (counts[em] || 0) + 1;
+              return counts;
+          },{})
+          let n = arr.length;
+          let min = Math.min(...arr)
+          let max = Math.max(...arr)
+          console.log(min,max)
+          console.log(counts)
+          // 计算期望收益值
+          for(let pk of pks){
+              let lv =0;
+              let p = pk['p']
+              for(let i = min;i<=max;i+=0.001){
+                  let tempI = i.toFixed(3);
+                  let lvi = (100*(tempI - p)/tempI)*(counts[tempI] || 0)/n;
+                  lv += lvi;
+              }
+              pk['lv'] = (lv*4).toFixed(2);
+          }
+          console.log("pks:======"+symbol)
+          console.log(pks)
+          return pks;
+      })
+  }
+  function ShOrSz(code){
+      return (code[0]==='6' ? 'SH':'SZ') + code
+  }
+  function shou(num){
+    let w = 10000;
+    return num > w ? (num/w).toFixed(2) + 'w' : num.toFixed(0);
+  }
+  function dp(url,i,n,callback){
+    if(i==n){
+      return Promise.resolve()
+    }
+    let turl = url.replace("{%s}",i)
+    console.log(turl)
+    return forward(turl).then(res=>{
+      callback(res)
+      return dp(url,i+1,n,callback)
+    }).catch(error=>{
+      return Promise.reject(error);
+    })
+  }
+  function stat(data){
+    data = data?.data?.list || []
+    console.log("成交榜:"+data.length)
+    for(let stock of data){
+      let {amount,percent,current,total_shares,symbol,name} = stock;
+
+      if(!(amount&&percent&&current&&total_shares)){
+        continue;
+      }
+      let cap = (current*total_shares/yi).toFixed(2);
+      let capIndex = IntervalIndex(amounts,cap);
+      let percentIndex = IntervalIndex(percents,percent);
+
+      let key = capIndex * 20 + percentIndex;
+
+      amount = (amount/yi).toFixed(2);
+
+      let toStore = {
+        symbol,name,amount,percent,cap
+      }
+      if(amountMap.has(key)){
+        amountMap.get(key).push(toStore)
+      }else{
+        amountMap.set(key,[toStore])
+      }
+      percentMap[percentIndex] += 1;
+    }
+
+  }
+  // 市值，涨幅
+  function findStockByCapAndPercent(capObj,percentObj){
+    let capMax = IntervalIndex(amounts,capObj?.max || amounts.slice(-1)[0])
+    let capMin = IntervalIndex(amounts,capObj?.min || 0)
+    let percentMax = IntervalIndex(percents,percentObj.max || percents.slice(-1)[0])
+    let percentMin = IntervalIndex(percents,percentObj.min || 0)
+
+    return Array.from(amountMap.keys()).reduce((acc, key) => {
+      let percent = key % 20;
+      let cap = Math.floor(key / 20);
+      if (percent >= percentMin && percent <= percentMax && cap >= capMin && cap <= capMax) {
+        acc.push(amountMap.get(key));
+      }
+      return acc;
+    }, []).flat();
+
+  }
+  function lowestAmount(){
+    let result = [];
+    for(let capIndex = 0;capIndex < amounts.length - 1;capIndex++){
+      let tempArr = [];
+      for(let percentIndex =0;percentIndex < percents.length - 1;percentIndex++){
+        let key = capIndex * 20 + percentIndex;
+        if(amountMap.has(key)){
+          tempArr = tempArr.concat(amountMap.get(key))
+        }
+      }
+
+      let arr = tempArr.sort((stock1, stock2)=>stock2.amount/(stock2.cap*(stock2.percent + 0.00001))-stock1.amount/(stock1.cap*(stock1.percent + 0.00001))).slice(-5);
+      result = result.concat(arr)
+    }
+    return result;
+  }
+  // 值value 映射到区间intervals : return j 表示区间  (intervals[j],intervals[j+1])
+  function IntervalIndex(intervals,value){
+    for(let i=0;i<intervals.length;i++){
+      if(intervals[i] > value){
+        return i-1
+      }
+    }
+    return intervals.length-1
+  }
+  function timestampToString(timestamp){
+    let d = new Date(timestamp * 1);
+    let month  = d.getMonth() + 1
+    let day = d.getDate()
+    let hour = d.getHours()
+    let min = d.getMinutes()
+    let sec = d.getSeconds()
+    let str = (d.getFullYear()) + "-" +
+            (month <=9 ? '0' + month : month) + "-" +
+            (day <=9 ? '0' + day : day) + " " +
+            (hour <=9 ? '0' + hour : hour) + ":" +
+            (min <=9 ? '0' + min : min) + ":" +
+            (sec <=9 ? '0' + sec : sec);
+    return str
+  }
+  // Markdown 转 HTML 函数
+  function markdownToHtml(markdown) {
+      // 按 ### 分割文本
+      const sections = markdown.split('###').filter(section => section.trim() !== '');
+
+      let html = '';
+
+      sections.forEach(section => {
+        // 提取标题和内容
+        const [title, ...contentLines] = section.split('\n').filter(line => line.trim() !== '');
+        const content = contentLines.join('\n');
+
+        // 将内容中的有序列表提取出来
+        const listItems = content.match(/^\d+\.\s+(.*)/gm) || [];
+        const nonListContent = content.replace(/^\d+\.\s+(.*)/gm, '').trim();
+
+        // 生成 HTML
+        html += `
+          <div class="section">
+            <h2>${title}</h2>
+            ${nonListContent ? `<p>${nonListContent}</p>` : ''}
+            ${listItems.length > 0 ? `
+              <div class="list-container">
+                <ul>
+                  ${listItems.map(item => `<li>${item.replace(/^\d+\.\s+/, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+
+      return html;
+    }
+
+  function createDiv(data, className = 'zff'){
+    return $(`<div class = '${className}'>`).append(createUl(data));
+  }
+  function createX(data, className = 'zff'){
+    let title = data.title
+    let list = data.list
+
+    let div = $("<div class='x-c'>")
+    list.forEach(one=>{
+      div.append($(`<li class="x-i">`).append(createUl(one)))
+    })
+    let x = $("<div class='x'>")
+      x.append($("<h>").text(title))
+        x.append(div)
+    return x
+  }
+  function createUl(data){
+    let title = data.title
+    let list = data.list
+    //const $div = $("<div class = 'zff'>");
+    let $h2 = "";
+    if(data.href){
+      let href = $("<a>").attr("href",data.href).attr("Target","_blank").text(title)
+      $h2 = $("<h2>").html(href);
+    }else{
+      $h2 = $("<h2>").text(title);
+    }
+
+    const $ul = $("<ul>");
+    $ul.append($h2);
+    list.forEach(item => {
+      let li = $("<li>");
+      if(!item.list){
+        li.text(createLi(item))
+      }else{
+        let t = item.title
+        let lst = item.list
+        let ul = $("<ul>");
+        lst.forEach(a=>{
+          ul.append(createLi(a))
+        })
+        li.append($("<h3>").text(t))
+        li.append(ul)
+      }
+      $ul.append(li)
+    });
+    //$div.append($h2)
+    //$div.append($ul)
+    return $ul;
+  }
+  function createLi(item){
+    let itemType = typeof item
+    let li = $("<li>")
+    if(itemType == 'string'){
+        li.text(item);
+      }else if(item.title && item.list){
+        li.append(createDiv(item));
+      }else if(item.href){
+        let href = $("<a>").attr("href",item.href).attr("Target","_blank").text(item.text)
+        li.append(href);
+      }else if(item.text){
+        li.append($("<div class='left-text'>").text(item.text));
+      }
+      if(item.right){
+        
+        if(typeof item.right == 'string'){
+          li.append($("<div class = 'right'>").text(item.right));
+        }else{
+          li.append($("<div class = ''>").html(item.right));
+        }
+      }
+      return li
+  }
+  function extractMarketAndTheme(etfName) {
+    // 市场映射
+    const marketMap = {
+        "香港": ["港股", "恒生", "港股通","香港"],
+        "中概": ["中概"],
+        "美国": ["标普", "纳指","纳斯达克"],
+        "日本": ["日经"],
+        "德国": ["德国"],
+        "沙特": ["沙特"]
+    };
+
+    // 主题映射（归类）
+    const themeMap = {
+        "医药": ["医药", "医疗", "生物科技", "创新药"],
+        "科技": ["科技"],
+        "互联": ["互联"],
+        "消费": ["消费"],
+        "能源": ["油气"],
+        "股息": ["股息","红利"],
+        "港股通":["港股通"],
+        "500":["500"],
+        "100":["100"],
+        "225":["225"],
+        "50":["50"]
+    };
+
+    // 确定市场
+    let market = "其他";
+    for (let [mkt, keywords] of Object.entries(marketMap)) {
+        if (keywords.some(k => etfName.includes(k))) {
+            market = mkt;
+            break;
+        }
+    }
+
+    // 确定主题
+    let theme = "综合";
+    for (let [t, keywords] of Object.entries(themeMap)) {
+        if (keywords.some(k => etfName.includes(k))) {
+            theme = t;
+            break;
+        }
+    }
+    
+
+    return { market, theme };
+}
+
+function removeSimilarETFs(etfList) {
+    let seen = new Set();
+    let uniqueETFs = [];
+
+    etfList.forEach(etf => {
+        const { market, theme } = extractMarketAndTheme(etf.name);
+        if(market=='其他' || theme=='综合'){
+          uniqueETFs.push(etf);
+          return 
+        }
+        const key = `${market}-${theme}`;
+
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueETFs.push(etf);
+        }else{
+          console.log("其他country:"+market + theme,etf.name)
+
+        }
+    });
+
+    return uniqueETFs;
+}
+  function addGlobalStyle(css) {
+    const head = document.head || document.getElementsByTagName('head')[0];
+    const style = document.createElement('style');
+    style.type = 'text/css';
+    if (style.styleSheet) {
+      style.styleSheet.cssText = css;  // IE兼容
+    } else {
+      style.appendChild(document.createTextNode(css));
+    }
+    head.appendChild(style);
+  }
+  function forward(url){
+      let base_url = "http://localhost:8080/forward?url=" + encodeURIComponent(url)
+      return new Promise((resolve,reject)=>{
+          $.ajax({
+              url: base_url,
+              method: 'GET',
+              //crossDomain:true,
+              success: function(response) {
+                  resolve(response);
+              },
+              error: function(xhr, status, error) {
+                  reject(error);
+              }
+          });
+      })
+  }
+  function get(url,withCredentials = true){
+    return new Promise((resolve,reject)=>{
+      $.ajax({
+        url: url,
+        method: 'GET',
+        xhrFields: {
+          withCredentials  // 允许跨域发送凭据（包括 Cookie）
+        },
+        //crossDomain:true,
+        success: function(response) {
+          resolve(response);
+        },
+        error: function(xhr, status, error) {
+          reject(error);
+        }
+      });
+    })
+  }
+</script>
+</html>

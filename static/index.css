@@ -1,0 +1,135 @@
+body, div, dl, dt, dd, ul, ol, li, h1, h2, h3, h4, h5, h6, pre, form, fieldset, input, p, blockquote, table, th, td, img, textarea {
+    margin: 0;
+    padding: 0;
+}
+
+h2 {
+    background: rgb(79, 129, 189);
+    color: #eee;
+    padding: 2px 4px;
+    margin-bottom: 5px;
+}
+.zff{
+    /* float: left; */
+    line-height: 16px;
+}
+.txt li{
+    margin-top : 10px;
+}
+.left-text{
+    padding-right: 20px;
+}
+a {
+    color: rgb(79,129,189)
+}
+a {
+    text-decoration: none !important;  /* 强制去掉下划线 */
+    transition: box-shadow 0.3s ease !important;  /* 增加过渡效果 */
+}
+
+a:hover {
+    color: white;
+    background: rgb(79, 129, 189);
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+ul {
+    list-style-type: none;
+    /* padding-left: 0; */
+    margin: 0;
+}
+li {
+    /* display: flex;  */
+    list-style-type: none;
+
+    /* background-color: #fff; */
+    justify-content: space-between; /* 在主轴上均匀分布子元素 */
+    align-items: center; /* 垂直居中对齐 */
+}
+h3 {
+    margin: 0 0 10px 0;
+    /* color: #555; */
+}
+
+.zff  ul ul {
+    /* margin: 0 0 0 10px; */
+}
+.zff  ul ul li {
+    /* margin: 0 0 0 10px; */
+    display: flex;
+    justify-content: space-between;
+;
+}
+ul {
+    margin: 0 0 4px 4px;
+}
+
+a, .right {
+    display: inline-block; /* 让 a 和 div 在同一行显示 */
+    vertical-align: middle; /* 垂直对齐 */
+  }
+.zff img{
+    height: 20px;
+}
+
+.right {
+    margin-left: 10px; /* 可选：调整 a 和 div 之间的间距 */
+    
+  }
+
+.gradient-container {
+    position: relative; /* 用于绝对定位渐变线 */
+    display: flex; /* 使用flex布局 */
+    align-items: center; /* 垂直居中子元素 */
+}
+
+.gradient-line {
+    flex-shrink: 0;
+    width: 60px;
+    height: 5px;
+    /* background: linear-gradient(to right, #1bb009 60%, #e74d4d 40%);   删除此行 */
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+.x {
+    /* width: 100%; */
+    /* display: flex */
+
+}
+.x-i {
+    margin: 2px;
+}
+.x-c{
+    display: flex;
+}
+.x ul{
+    padding-right: 5px;
+}
+
+.x ul ul li{
+
+    margin-top: 2px;
+}
+body {
+    font-size: 12px; /* 设置整个页面的默认字体大小 */
+  }
+
+#hotnew  h2{
+/* font-size: 15px;  */
+    width: 180px;
+} 
+#hotnew ul{
+    margin: 0 0 4px 20px;
+    font-size: 15px;
+}
+
+
+  .hover-background {
+    background: rgb(232, 238, 247); /* 鼠标悬停时的背景颜色 */
+  }
+
+#rank-c {
+    display: flex;
+}
+
