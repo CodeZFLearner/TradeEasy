@@ -7,12 +7,11 @@
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
+
   <div>
     <div id="main">
       <div id="hotnew" >
-        <h3>
-          热点新闻
-        </h3>
+        <h3>热点新闻</h3>
         <div class="hot-new"></div>
       </div>
       <div id ="new24"></div>
@@ -25,6 +24,7 @@
   </div>
 </body>
 <script>
+
    document.addEventListener('mouseenter', (event) => {
    
     if(event.target.closest){
@@ -80,9 +80,23 @@
   /**
   
      */
-     get(host+"hotNews.txt").then(res=>{
-    console.log("..." + res)
-    $(".hot-new").html(markdownToHtml(res));
+  get(host+"hotNew-ds.json").then(async res=>{
+    console.log(res)
+    let show_list = []
+    let hotnewData = await get(host+"hotNew-abstract.json")
+    Object.keys(res).forEach(key => {
+      // console.log(`Key: ${key}, Value: ${res[key]}`);
+      let one = {
+        "title":hotnewData[key].artTitle,
+        "href":easthost + `a/${key}.html`,
+        "list":[{"markdown":res[key]}]
+      }
+      show_list.push(one)
+    });
+    $(".hot-new").append(createDiv({
+      "title":"热点新闻",
+      "list":show_list
+    },'test'));
   })
   get(host+"fastNews-answer.txt").then(async (res)=>{
     fastNewJdata = await get(host+"fastNews-title.json")
@@ -457,36 +471,19 @@ forward(screener + "/fund/list.json?page=1&size=1080&order=desc&order_by=percent
   // Markdown 转 HTML 函数
   function markdownToHtml(markdown) {
       // 按 ### 分割文本
-      const sections = markdown.split('###').filter(section => section.trim() !== '');
-
-      let html = '';
-
-      sections.forEach(section => {
-        // 提取标题和内容
-        const [title, ...contentLines] = section.split('\n').filter(line => line.trim() !== '');
-        const content = contentLines.join('\n');
-
-        // 将内容中的有序列表提取出来
-        const listItems = content.match(/^\d+\.\s+(.*)/gm) || [];
-        const nonListContent = content.replace(/^\d+\.\s+(.*)/gm, '').trim();
-
-        // 生成 HTML
-        html += `
-          <div class="section">
-            <h2>${title}</h2>
-            ${nonListContent ? `<p>${nonListContent}</p>` : ''}
-            ${listItems.length > 0 ? `
-              <div class="list-container">
-                <ul>
-                  ${listItems.map(item => `<li>${item.replace(/^\d+\.\s+/, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>`).join('')}
-                </ul>
-              </div>
-            ` : ''}
-          </div>
-        `;
-      });
-
-      return html;
+      markdown = markdown.replace(/```markdown([\s\S]+)```/gm, '$1'); // ### 标题 -> <h3>
+      markdown = markdown.replace(/^### (.*$)/gm, '<h3>$1</h3>'); // ### 标题 -> <h3>
+        markdown = markdown.replace(/^# (.*$)/gm, '<h3>$1</h3>'); // ### 标题 -> <h3>
+          markdown = markdown.replace(/^## (.*$)/gm, '<h4>$1</h4>'); // ### 标题 -> <h3>
+      // 替换无序列表
+      // markdown = markdown.replace(/^\s*-\s\*\*(.*?)\*\*:\s*(.*$)/gm, '<li><strong>$1</strong>: $2</li>'); // - **加粗**: 内容 -> <li><strong>加粗</strong>: 内容</li>
+      markdown = markdown.replace(/\*\*(.*)\*\*/gm, '<strong>$1</strong>'); // - 内容 -> <li>内容</li>
+      markdown = markdown.replace(/^\s*-\s(.*$)/gm, '<li>$1</li>'); // - 内容 -> <li>内容</li>
+      markdown = markdown.replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>'); // 将<li>包裹在<ul>中
+        console.log(markdown)
+      // 替换段落
+      markdown = markdown.replace(/^(?!<h|<ul|<li)(.*$)/gm, '<p>$1</p>'); // 普通文本 -> <p>
+      return markdown;
     }
 
   function createDiv(data, className = 'zff'){
@@ -530,7 +527,14 @@ forward(screener + "/fund/list.json?page=1&size=1080&order=desc&order_by=percent
         lst.forEach(a=>{
           ul.append(createLi(a))
         })
-        li.append($("<h3>").text(t))
+        let h3 = ""
+        if(item.href){
+          let href = $("<a>").attr("href",item.href).attr("Target","_blank").text(t)
+          h3 = $("<h3>").html(href);
+        }else{
+          h3 = $("<h3>").text(t);
+        }
+        li.append(h3)
         li.append(ul)
       }
       $ul.append(li)
@@ -551,6 +555,8 @@ forward(screener + "/fund/list.json?page=1&size=1080&order=desc&order_by=percent
         li.append(href);
       }else if(item.text){
         li.append($("<div class='left-text'>").text(item.text));
+      }else if(item.markdown){
+        li.append($("<div >").html(markdownToHtml(item.markdown)));
       }
       if(item.right){
         

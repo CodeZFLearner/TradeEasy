@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://code.jquery.com/jquery-3.0.0.min.js"></script>
+    <link rel="stylesheet" href="generate.css">
+</head>
+<body>
+    <div>
+        <!--1.  -->
+        <div>
+            <h2 id="message-box-title">输入code:</h2>
+            <input id="message-box-input" type="text">
+            <div class="message-box-buttons">
+                <button class="confirm" onclick="handleConfirm()">确定</button>
+                <button class="cancel" onclick="closeMessageBox()">取消</button>
+            </div>
+        </div>
+        <!--2.  -->
+        <div id ="g1">
+            <div class="list-container">
+                <input type="text" id="bg1" placeholder="Enter new item">
+                <button onclick="addItem(`bg1`,`orgs`)">Add</button>
+                <div id="orgs">
+                    
+                </div>
+            </div>
+        </div>
+        <div class="message-box-buttons">
+            <button class="confirm" onclick="handleG1()">确定</button>
+        </div>
+        <div id ="g2">
+          <div class="list-container">
+            <input type="text" id="bg2" placeholder="Enter new item">
+            <button onclick="addItem(`bg2`,`evidences`)">Add</button>
+            <div id="evidences">
+                
+            </div>
+        </div>
+        </div>
+        <div id ="g3"></div>
+    </div>
+    
+	
+  
+</body>
+<script>
+
+    let code = ''
+
+    // 处理确认操作
+    function handleConfirm() {
+        const input = document.getElementById('message-box-input');
+        code = input.value.trim()
+        if(code.length==6){
+          let container = "orgs"
+            $("#orgs").empty()
+            get(host+`generate/g1?code=${code}`).then(res=>{
+                let lst = res.orgs.re.map(item => ({"id":item.post_id,"title": item.post_title}))
+                addItems(container,lst)
+            })
+        }
+    }
+    function handleG1(){
+        let attributesArray = [];
+        $("#orgs span").each(function() {
+            // 假设我们获取的是 data-value 属性
+            let attributeValue = $(this).attr("v");
+            attributesArray.push(attributeValue);
+        });
+        console.log(attributesArray)
+        let data = {
+            "code": code,
+            "orgs": attributesArray
+        }
+        post(host+`generate/g2`, data).then(res=>{
+            let t = setInterval(()=>{
+                get(host+`evidence-${code}.json`).then(res=>{
+                    clearInterval(t);
+                    let container = "evidences"
+                    $(container).empty()
+                    for(let key of Object.keys(res)){
+                        let data = res[key].split(";").map(item=>({"id":key,"title": item}))
+                        addItems(container,data)
+                    }
+                    
+                })
+            },2000)
+        })
+    }
+
+    // 关闭弹窗
+    function closeMessageBox() {
+        const messageBox = document.getElementById('message-box');
+        const overlay = document.getElementById('overlay');
+        messageBox.style.display = 'none';
+        overlay.style.display = 'none';
+    }
+
+  const yi = 10000*10000;
+  
+  let easthost = "https://finance.eastmoney.com/"
+  let host = "http://localhost:8080/"
+  let etf_url_pre = 'https://xueqiu.com/S/'
+  let screener = "https://stock.xueqiu.com/v5/stock/screener"
+  let base_url = host + "crawl?category=Category"
+  function addItems(container,items){
+    const itemList = document.getElementById(container);
+    for(let item of items){
+        if(!item.title && !item.abstract) continue 
+        const newItem = document.createElement('div');
+        newItem.className = 'list-item';
+        newItem.innerHTML = `
+            <span v=${item.id}>${item.title}</span>
+            <button class="delete-btn" onclick="deleteItem(this)">×</button>
+        `;
+        itemList.appendChild(newItem);
+    }   
+  }
+  function addItem(inputBut,container) {
+        const input = document.getElementById(inputBut);
+        const newItemText = input.value.trim();
+        if (newItemText === '') {
+            alert('Please enter an item.');
+            return;
+        }
+
+        const itemList = document.getElementById(container);
+        const newItem = document.createElement('div');
+        newItem.className = 'list-item';
+        newItem.innerHTML = `
+            ${newItemText}
+            <button class="delete-btn" onclick="deleteItem(this)">×</button>
+        `;
+        itemList.appendChild(newItem);
+
+        input.value = ''; // 清空输入框
+    }
+
+    function deleteItem(button) {
+        const listItem = button.parentElement;
+        listItem.remove();
+    }
+  function createDiv(data, className = 'zff'){
+    return $(`<div class = '${className}'>`).append(createUl(data));
+  }
+  function createX(data, className = 'zff'){
+    let title = data.title
+    let list = data.list
+
+    let div = $("<div class='x-c'>")
+    list.forEach(one=>{
+      div.append($(`<li class="x-i">`).append(createUl(one)))
+    })
+    let x = $("<div class='x'>")
+      x.append($("<h>").text(title))
+        x.append(div)
+    return x
+  }
+  function createUl(data){
+    let title = data.title
+    let list = data.list
+    //const $div = $("<div class = 'zff'>");
+    let $h2 = "";
+    if(data.href){
+      let href = $("<a>").attr("href",data.href).attr("Target","_blank").text(title)
+      $h2 = $("<h2>").html(href);
+    }else{
+      $h2 = $("<h2>").text(title);
+    }
+
+    const $ul = $("<ul>");
+    $ul.append($h2);
+    list.forEach(item => {
+      let li = $("<li>");
+      if(!item.list){
+        li.text(createLi(item))
+      }else{
+        let t = item.title
+        let lst = item.list
+        let ul = $("<ul>");
+        lst.forEach(a=>{
+          ul.append(createLi(a))
+        })
+        let h3 = ""
+        if(item.href){
+          let href = $("<a>").attr("href",item.href).attr("Target","_blank").text(t)
+          h3 = $("<h3>").html(href);
+        }else{
+          h3 = $("<h3>").text(t);
+        }
+        li.append(h3)
+        li.append(ul)
+      }
+      $ul.append(li)
+    });
+    //$div.append($h2)
+    //$div.append($ul)
+    return $ul;
+  }
+  function createLi(item){
+    let itemType = typeof item
+    let li = $("<li>")
+    if(itemType == 'string'){
+        li.text(item);
+      }else if(item.title && item.list){
+        li.append(createDiv(item));
+      }else if(item.href){
+        let href = $("<a>").attr("href",item.href).attr("Target","_blank").text(item.text)
+        li.append(href);
+      }else if(item.text){
+        li.append($("<div class='left-text'>").text(item.text));
+      }else if(item.markdown){
+        li.append($("<div >").html(markdownToHtml(item.markdown)));
+      }
+      if(item.right){
+        
+        if(typeof item.right == 'string'){
+          li.append($("<div class = 'right'>").text(item.right));
+        }else{
+          li.append($("<div class = ''>").html(item.right));
+        }
+      }
+      return li
+  }
+  
+  function forward(url){
+      let base_url = "http://localhost:8080/forward?url=" + encodeURIComponent(url)
+      return new Promise((resolve,reject)=>{
+          $.ajax({
+              url: base_url,
+              method: 'GET',
+              //crossDomain:true,
+              success: function(response) {
+                  resolve(response);
+              },
+              error: function(xhr, status, error) {
+                  reject(error);
+              }
+          });
+      })
+  }
+  function get(url,withCredentials = true){
+    return new Promise((resolve,reject)=>{
+      $.ajax({
+        url: url,
+        method: 'GET',
+        xhrFields: {
+          withCredentials  // 允许跨域发送凭据（包括 Cookie）
+        },
+        //crossDomain:true,
+        success: function(response) {
+          resolve(response);
+        },
+        error: function(xhr, status, error) {
+          reject(error);
+        }
+      });
+    })
+  }
+
+  function post(url,data,withCredentials = true){
+    return new Promise((resolve,reject)=>{
+      $.ajax({
+        url: url,
+        method: 'POST',
+        xhrFields: {
+          withCredentials  // 允许跨域发送凭据（包括 Cookie）
+        },
+        data:JSON.stringify(data),
+        contentType: 'application/json',
+        //crossDomain:true,
+        success: function(response) {
+          resolve(response);
+        },
+        error: function(xhr, status, error) {
+          reject(error);
+        }
+      });
+    })
+  }
+</script>
+</html>

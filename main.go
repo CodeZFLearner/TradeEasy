@@ -1,8 +1,8 @@
 /*
  * @Author: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
  * @Date: 2025-01-05 18:44:24
- * @LastEditors: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
- * @LastEditTime: 2025-02-15 01:09:04
+ * @LastEditors: zff 2059577798@qq.com
+ * @LastEditTime: 2025-03-07 20:07:08
  * @FilePath: \HelloGolang\main.go
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -47,6 +47,7 @@ func main() {
 	http.HandleFunc("/forward", route.Forward)
 	http.HandleFunc("/test", route.Huobi)
 	http.HandleFunc("/article", route.Article)
+	http.HandleFunc("/generate/", route.Generate)
 
 	// 将静态文件目录映射到URL路径
 	fs := http.FileServer(http.Dir("./static"))
@@ -63,7 +64,9 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	start()
+	// start()
+
+	// hanleHotNew()
 
 	// 启动服务器
 	log.Println("Starting server on :8080...")
@@ -74,7 +77,7 @@ func main() {
 }
 
 func start() {
-	ticker := time.NewTicker(2 * 60 * time.Minute)
+	ticker := time.NewTicker(15 * 60 * time.Minute)
 	// 创建一个通道，用于接收定时器的信号
 	done := make(chan bool)
 
@@ -100,32 +103,41 @@ func start() {
 func hanleHotNew() {
 	fileHelp := oss.FileHelper{}
 	var data map[string]interface{}
-	err := fileHelp.ReadFromFile("hotNew.json", &data)
-	if err != nil {
+	var hotnewsDs map[string]interface{}
+
+	if err := fileHelp.ReadFromFile("hotNew-ds.json", &hotnewsDs); err == nil {
+		for key, value := range hotnewsDs {
+			common.MyCache.Set(key, value, 10*time.Hour)
+		}
+	}
+
+	if err := fileHelp.ReadFromFile("hotNew.json", &data); err != nil {
 		fmt.Println("Error reading from file:", err)
 		return
 	}
-	// 处理 模型 输入
-	datasource := ""
-	for _, item := range data {
-		datasource = datasource + item.(string) + "\n"
-	}
 
-	q := "从政策与国际动态、股市与市场表现、公司动态与业绩、行业趋势与技术发展 和 机构观点与策略 五个方面对源数据中信息点分类。并按照以下要求返回信息点:" +
-		"1.信息点是数据源中主要表达的内容，返回数据源所有信息点 2.同一个分类下信息点在主题、内容、来源上不能重复或相似,如果具有相似性，就将信息点合并后简要概括。3.过滤掉简短的、含量低的信息点，并按照和分类主题的相关度降序排序。" +
-		"4.信息点不能重复,尽可能多的梳理出所有信息点;如果一个分类下没有信息点，就省略整个分类。省略开头和结尾概括性内容"
-	messages := []common.Message{
-		{Role: "system", Content: "这是源数据，问题的答案都基于此数据:" + datasource},
-		{Role: "user", Content: q},
+	hotNew := make(map[string]interface{})
+	// 处理 模型 输入
+	q := "你是一名杂志主编，根据文章内容梳理素材，以markdown 格式返回 省略开头和结尾的概括性内容"
+
+	for code, item := range data {
+		v, f := common.MyCache.Get(code)
+		if f {
+			hotNew[code] = v
+			continue
+		}
+		messages := []common.Message{
+			{Role: "system", Content: "这是原文:" + item.(string)},
+			{Role: "user", Content: q},
+		}
+		if answer, err := common.QDeepSeek(messages); err == nil {
+			hotNew[code] = answer
+			common.MyCache.Set(code, answer, 10*time.Hour)
+		} else {
+			fmt.Println(code + ":ds 失败")
+		}
 	}
-	// fmt.Println(datasource)
-	// fmt.Println(q)
-	if answer, err := common.QDeepSeek(messages); err == nil {
-		fmt.Println(answer)
-		fileHelp.WriteTxt("hotNews.txt", answer)
-	} else {
-		fmt.Println(err)
-	}
+	fileHelp.WriteToFile("hotNew-ds.json", hotNew)
 }
 func handleLastestNew() {
 	fileHelp := oss.FileHelper{}
@@ -165,22 +177,27 @@ func handleLastestNew() {
 		fmt.Println(err)
 	}
 }
+
 func hotNewParse() {
 	fileHelp := oss.FileHelper{}
 	c := url.Values{
 		"category": {"HotNews"},
 	}
 	result, err := service.CrawlByCategory(c)
+	jdata := make(map[string]interface{})
+
 	if err == nil {
 		var artcodes []string
 		for _, item := range result["data"].([]map[string]interface{}) {
 			if artcode, ok := item["artCode"].(string); ok {
 				artcodes = append(artcodes, artcode)
+				jdata[artcode] = item
 			}
 		}
 		if result, err := service.EastmoneyArticleService(artcodes); err == nil {
 			fileHelp.WriteToFile("hotNew.json", result)
 		}
+		fileHelp.WriteToFile("hotNew-abstract.json", jdata)
 	}
 }
 func fastNews() {
@@ -245,4 +262,12 @@ func crawlAndSave() {
 	}
 
 	fileHelp.WriteToFile("article.json", jdata)
+}
+func now_time() string {
+	now := time.Now()
+
+	// month := now.Month() // 返回的是time.Month类型
+	day := now.Day()
+	hour := now.Hour()
+	return fmt.Sprintf("%d-%d", day, hour)
 }

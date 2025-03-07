@@ -1,8 +1,8 @@
 /*
  * @Author: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
  * @Date: 2025-02-07 12:39:44
- * @LastEditors: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
- * @LastEditTime: 2025-02-16 04:16:40
+ * @LastEditors: zff 2059577798@qq.com
+ * @LastEditTime: 2025-03-08 00:58:15
  * @FilePath: \HelloGolang\pkg\common\DeepSeek.go
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -11,14 +11,14 @@ package common
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
+	"os"
 )
 
 const (
-	ds_url  = "https://api.deepseek.com/chat/completions"
-	api_key = "sk-6322683192f4485f8ba74195193f642c"
+	ds_url = "https://api.deepseek.com/chat/completions"
 )
 
 type Message struct {
@@ -61,6 +61,12 @@ type Response struct {
 }
 
 func QDeepSeek(messages []Message) (string, error) {
+	// Get the API key from environment variable
+	api_key := os.Getenv("DEEPSEEK_API_KEY")
+	if api_key == "" {
+		return "", errors.New("DEEPSEEK_API_KEY environment variable not set")
+	}
+
 	// Create a new POST request with the payload
 	payload := Payload{
 		Model:       "deepseek-chat",
@@ -95,13 +101,10 @@ func QDeepSeek(messages []Message) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(string(body))
-	fmt.Println(1111)
 	// Parse the JSON response
 	var result Response
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		fmt.Println(222222)
 		return "", err
 	}
 

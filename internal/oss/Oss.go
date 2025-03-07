@@ -20,10 +20,18 @@ var (
 )
 
 const (
-	SecretId  = "AKIDOe5SzpjYM8EKZn9UzSA6viT2NVRErSII"
-	SecretKey = "c6RZT8YrVPNvdu8WC9NoZHxZERgzBDNV"
-	DownPath  = "./data/"
+	DownPath = "./data/"
 )
+
+var (
+	SecretId  string
+	SecretKey string
+)
+
+func init() {
+	SecretId = os.Getenv("COS_SECRET_ID")
+	SecretKey = os.Getenv("COS_SECRET_KEY")
+}
 
 var fileCh = make(chan string, 3)
 var wg sync.WaitGroup
